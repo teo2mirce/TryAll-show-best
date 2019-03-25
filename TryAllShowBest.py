@@ -90,20 +90,22 @@ models.append(('NN1',     MLPClassifier(alpha=0.1) ))
 models.append(('AB',     AdaBoostClassifier() ))
 models.append(('NB',     GaussianNB() ))
 models.append(('QDA',     QuadraticDiscriminantAnalysis()  ))
-models.append(('NuSVC',     NuSVC(probability=True)  ))
 models.append(('GBC',     GradientBoostingClassifier()  ))
 models.append(('Q2',     BaggingClassifier()  ))
 
 
-models.append(('RBF2',     SVC(kernel="rbf", C=0.025, probability=True)  ))
 models.append(('ETC',     ExtraTreeClassifier()  ))
 models.append(('Q1',     SGDClassifier()  ))
 models.append(('Q2',     RidgeClassifier()  ))
 models.append(('Q3',     PassiveAggressiveClassifier()  ))
-models.append(('Q4',     GaussianProcessClassifier()  ))
 models.append(('Q5',     ExtraTreesClassifier()  ))
 models.append(('Q6',     BernoulliNB()  ))
 models.append(('Q7',     GaussianMixture()  ))
+
+#dureaza prea mult sau dau eroare
+# models.append(('NuSVC',     NuSVC(probability=True)  ))
+# models.append(('RBF2',     SVC(kernel="rbf", C=0.025, probability=True)  ))
+# models.append(('Q4',     GaussianProcessClassifier()  ))
 
 
 #https://scikit-learn.org/stable/auto_examples/ensemble/plot_forest_importances.html
@@ -119,6 +121,8 @@ print('Important features: ',np.array(Features)[indices])
 from random import shuffle
 import random
 # shuffle(indices)
+
+from sklearn.model_selection import KFold
 
 
 from collections import Counter
@@ -146,9 +150,20 @@ for normalizare in ["Fara","N1","N2"]:
 	
 	for name, model in models:
 		start_time = time.time()
+		
+		kf = KFold(n_splits=10,shuffle=True)
+		kf.get_n_splits(X_Train_N)
+		miniacc=[]
+		for train_index, test_index in kf.split(X_Train_N):
+			X_Tr, X_Te= X_Train_N[train_index], X_Train_N[test_index]
+			Y_Tr, Y_Te= Y_Train[train_index], Y_Train[test_index]
+			model.fit(X_Tr,Y_Tr)
+			miniacc.append( (model.predict(X_Te)==Y_Te).mean() )
+			
+		
 		model.fit(X_Train_N,Y_Train)
 		Preds=model.predict(X_Test_N)
-		acc=(Preds==Y_Test).mean()
+		acc=(np.array(miniacc)).mean()
 		print(normalizare,' ',name,' ',acc,' time: ',time.time() - start_time)
 						
 		if len(Accs)<=10 or acc>=np.array(Accs).mean():
@@ -164,4 +179,4 @@ BestIndex=np.array([x for x in Accs]).argsort()[::-1][:10]
 
 for i in range(len(Predictii)):
 	Pred=np.array(Predictii[i])[BestIndex]
-	print(X_Test[i],'->',Counter(Pred).most_common(1)[0][0],' ',100.0*Counter(Pred).most_common(1)[0][1]/(len(Pred)),'%')
+	print(Counter(Pred).most_common(1)[0][0],' ',100.0*Counter(Pred).most_common(1)[0][1]/(len(Pred)),'%')
